@@ -51,5 +51,8 @@ constexpr int64_t TimeoutMembers       = 1ULL << 40; // Moderate Members
 // Compatibility alias for Revolt's Masquerade permission
 constexpr int64_t Masquerade           = 1ULL << 29; // Map to ManageWebhooks since webhooks are used for masquerades on Discord/Fluxer
 constexpr int64_t CreateInvites        = CreateInstantInvite;
+constexpr int64_t AssignRoles          = ManageRole;
+constexpr int64_t ManageAvatar         = ChangeNickname;
+constexpr int64_t RemoveAvatars        = ManageNicknames;
 
 } // namespace fluxerpp::permissions

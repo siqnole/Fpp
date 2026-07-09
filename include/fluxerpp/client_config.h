@@ -95,6 +95,10 @@ struct ClientConfig {
 
     // --- Masquerade Override ---
     std::function<void(class cluster&, const std::string&, models::MessagePayload&)> masquerade_handler = nullptr;
+
+    // --- Compatibility ---
+    std::string cdn_url = "https://cdn.fluxer.app";
+    std::string autumn_url = "https://cdn.fluxer.app";
 };
 
 } // namespace fluxerpp
