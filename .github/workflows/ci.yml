@@ -1,0 +1,64 @@
+# ============================================================
+# CI — Build & Compile Check
+# Runs on every push and pull request.
+# Verifies that fluxerpp + bronx compile cleanly.
+# ============================================================
+name: CI — Build
+
+on:
+  push:
+    branches: ["main", "dev", "feature/**"]
+  pull_request:
+    branches: ["main", "dev"]
+
+jobs:
+  build:
+    name: Compile (Fedora / GCC)
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:41
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # ── 2. Install dependencies ──────────────────────────
+      - name: Install build dependencies
+        run: |
+          dnf install -y \
+            cmake make gcc-c++ git \
+            mariadb-connector-c-devel \
+            tesseract-devel leptonica-devel \
+            cairo-devel openssl-devel \
+            nlohmann-json-devel pkg-config \
+            && dnf clean all
+
+      # ── 3. Cache CMake / build artifacts ────────────────
+      - name: Cache build directory
+        uses: actions/cache@v4
+        with:
+          path: bronx/build
+          key: ${{ runner.os }}-cmake-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-cmake-
+
+      # ── 4. Configure ────────────────────────────────────
+      - name: CMake configure
+        run: |
+          mkdir -p bronx/build
+          cd bronx/build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+
+      # ── 5. Build ─────────────────────────────────────────
+      - name: Build fluxerpp + bronx
+        run: |
+          cd bronx/build
+          make -j$(nproc)
+
+      # ── 6. Confirm binary exists ─────────────────────────
+      - name: Verify binary
+        run: |
+          test -f bronx/build/bronx && echo "✅ bronx binary built successfully"

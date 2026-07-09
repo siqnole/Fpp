@@ -1,0 +1,100 @@
+# ============================================================
+# CD — Build & Push Container Image
+# Runs on push to main after CI passes.
+# Publishes image to GitHub Container Registry (ghcr.io).
+# Optionally SSH-deploys to your server.
+# ============================================================
+name: CD — Deploy
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:  # allow manual trigger from GitHub UI
+
+jobs:
+  build-and-push:
+    name: Build & Push Image (GHCR)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write   # needed to push to ghcr.io
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # ── 2. Set up Docker Buildx (works with Podman images too)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ── 3. Log in to GitHub Container Registry ───────────
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 4. Generate image metadata / tags ────────────────
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/fluxer-bronx
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      # ── 5. Build and push ─────────────────────────────────
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: bronx/Containerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── Optional: SSH deploy to your server ──────────────────
+  # Uncomment and configure once you have a server set up.
+  # Requires these GitHub Secrets:
+  #   DEPLOY_HOST    — SSH hostname or IP
+  #   DEPLOY_USER    — SSH username
+  #   DEPLOY_SSH_KEY — Private SSH key (contents of ~/.ssh/id_ed25519)
+  #   DEPLOY_PATH    — Absolute path to the bot directory on the server
+
+  deploy:
+    name: Deploy to Server (SSH)
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    # Only deploy from main, and only if DEPLOY_HOST secret is set
+    if: >
+      github.ref == 'refs/heads/main' &&
+      vars.DEPLOY_ENABLED == 'true'
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:       ${{ secrets.DEPLOY_HOST }}
+          username:   ${{ secrets.DEPLOY_USER }}
+          key:        ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ secrets.DEPLOY_PATH }}
+
+            echo "[cd] pulling latest image..."
+            podman pull ghcr.io/${{ github.repository_owner }}/fluxer-bronx:latest
+
+            echo "[cd] restarting bot..."
+            ./bronx/restart.sh
+
+            echo "[cd] deployment complete ✅"
