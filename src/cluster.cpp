@@ -361,6 +361,9 @@ void cluster::ban_user(const std::string& server_id,
         try {
             auto res = rest_.ban_user(server_id, user_id,
                 reason.empty() ? std::optional<std::string>{} : reason);
+            if (res.success() && on_moderation_action) {
+                on_moderation_action(user_id, "ban", reason);
+            }
             if (callback) callback(res.success());
         } catch (const std::exception& e) {
             utils::logger::log(LogLevel::ERROR,
@@ -376,6 +379,9 @@ void cluster::unban_user(const std::string& server_id,
     std::thread([this, server_id, user_id, callback]() {
         try {
             auto res = rest_.unban_user(server_id, user_id);
+            if (res.success() && on_moderation_action) {
+                on_moderation_action(user_id, "unban", "");
+            }
             if (callback) callback(res.success());
         } catch (const std::exception& e) {
             utils::logger::log(LogLevel::ERROR,
@@ -391,6 +397,9 @@ void cluster::kick_member(const std::string& server_id,
     std::thread([this, server_id, user_id, callback]() {
         try {
             auto res = rest_.kick_member(server_id, user_id);
+            if (res.success() && on_moderation_action) {
+                on_moderation_action(user_id, "kick", "");
+            }
             if (callback) callback(res.success());
         } catch (const std::exception& e) {
             utils::logger::log(LogLevel::ERROR,
@@ -409,6 +418,9 @@ void cluster::timeout_member(const std::string& server_id,
             nlohmann::json fields;
             fields["communication_disabled_until"] = duration_iso;
             auto res = rest_.edit_member(server_id, user_id, fields);
+            if (res.success() && on_moderation_action) {
+                on_moderation_action(user_id, "timeout", duration_iso);
+            }
             if (callback) callback(res.success());
         } catch (const std::exception& e) {
             utils::logger::log(LogLevel::ERROR,
