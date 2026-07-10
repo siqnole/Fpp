@@ -20,4 +20,10 @@ Makefile
 .idea/
 *.swp
 
-bronx/
+bronx
+
+# Credentials / environment
+.env
+.env.*
+!.env.example
+openapi.json

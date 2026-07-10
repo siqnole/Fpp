@@ -104,8 +104,8 @@ void cluster::stop() {
 
     gateway_.disconnect();
 }
-
-// Event hooks delegation
+    
+// Event hooks
 void cluster::on_ready(std::function<void(const events::Ready&)> cb) { dispatcher_.on_ready(cb); }
 void cluster::on_message(std::function<void(const events::Message&)> cb) { dispatcher_.on_message(cb); }
 void cluster::on_message_update(std::function<void(const events::MessageUpdate&)> cb) { dispatcher_.on_message_update(cb); }
@@ -175,6 +175,20 @@ void cluster::send_message(const std::string& channel_id,
             if (res.success()) {
                 auto msg = models::Message::from_json(res.body);
                 if (callback) callback(msg, true);
+
+                if (payload.interactions && !payload.interactions->reactions.empty()) {
+                    std::string msg_id = msg.id;
+                    auto reactions = payload.interactions->reactions;
+                    std::thread([this, channel_id, msg_id, reactions]() {
+                        for (const auto& emoji : reactions) {
+                            try {
+                                rest_.add_reaction(channel_id, msg_id, emoji);
+                                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                            } catch (...) {}
+                        }
+                    }).detach();
+                }
+
                 if (payload.delete_after > 0) {
                     std::string msg_id = msg.id;
                     int delay = payload.delete_after;
@@ -227,7 +241,23 @@ void cluster::edit_message(const std::string& channel_id,
         try {
             auto res = rest_.edit_message(channel_id, message_id, payload.to_json());
             if (res.success()) {
-                if (callback) callback(models::Message::from_json(res.body), true);
+                auto msg = models::Message::from_json(res.body);
+                if (callback) callback(msg, true);
+
+                if (payload.interactions) {
+                    std::thread([this, channel_id, message_id, payload]() {
+                        try {
+                            rest_.clear_reactions(channel_id, message_id);
+                            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                            if (!payload.interactions->reactions.empty()) {
+                                for (const auto& emoji : payload.interactions->reactions) {
+                                    rest_.add_reaction(channel_id, message_id, emoji);
+                                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                                }
+                            }
+                        } catch (...) {}
+                    }).detach();
+                }
             } else {
                 utils::logger::log(LogLevel::ERROR,
                     "Failed to edit message: " + res.error_message(), config_);

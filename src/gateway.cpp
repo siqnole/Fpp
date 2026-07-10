@@ -33,6 +33,8 @@ gateway::gateway(const std::string& token, const ClientConfig& config,
         } else if (msg->type == ix::WebSocketMessageType::Open) {
             on_connected();
         } else if (msg->type == ix::WebSocketMessageType::Close) {
+            std::string close_msg = "WebSocket closed (code: " + std::to_string(msg->closeInfo.code) + ", reason: " + msg->closeInfo.reason + ")";
+            utils::logger::log(LogLevel::INFO, close_msg, config_);
             on_disconnected();
         } else if (msg->type == ix::WebSocketMessageType::Error) {
             std::string err_msg = "WebSocket Error: " + msg->errorInfo.reason;
@@ -62,6 +64,19 @@ void gateway::connect() {
     }
 
     std::string url = config_.ws_url;
+    if (!url.empty()) {
+        auto scheme_pos = url.find("://");
+        auto first_slash = url.find('/', scheme_pos == std::string::npos ? 0 : scheme_pos + 3);
+        if (first_slash == std::string::npos) {
+            url += "/";
+        }
+        if (url.find('?') == std::string::npos) {
+            url += "?";
+        } else {
+            url += "&";
+        }
+        url += "v=" + std::to_string(config_.ws_version) + "&encoding=" + config_.ws_format;
+    }
     // Standard gateway URL logic
     utils::logger::log(LogLevel::INFO, "Connecting to Gateway: " + url, config_);
     pimpl_->ws.setUrl(url);

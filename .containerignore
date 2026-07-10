@@ -1,0 +1,12 @@
+**/build/
+**/bin/
+**/.env
+**/.env.*
+**/*.o
+**/*.a
+**/*.so
+**/*.dylib
+**/CMakeFiles/
+**/CMakeCache.txt
+**/cmake_install.cmake
+**/Makefile

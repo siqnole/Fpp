@@ -65,6 +65,9 @@ static rest_client::Response perform_request(
         httplib::Client cli(config.api_base_url);
         cli.set_connection_timeout(std::chrono::milliseconds(config.http_timeout_ms));
         cli.set_read_timeout(std::chrono::milliseconds(config.http_timeout_ms));
+        // Enable TLS certificate verification using the system CA bundle
+        cli.set_ca_cert_path("/etc/ssl/certs/ca-bundle.crt");
+        cli.enable_server_certificate_verification(true);
 
         httplib::Headers headers;
         if (config.token_type == TokenType::BOT) {
@@ -759,6 +762,10 @@ rest_client::Response rest_client::change_password(const std::string& current_pa
     body["current_password"] = current_password;
     body["new_password"] = new_password;
     return post("/auth/change-password", body);
+}
+
+rest_client::Response rest_client::search_users(const std::string& query) {
+    return get("/users/search?query=" + url_encode(query));
 }
 
 } // namespace fluxerpp
