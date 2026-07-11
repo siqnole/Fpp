@@ -182,9 +182,19 @@ void cluster::send_message(const std::string& channel_id,
                     std::thread([this, channel_id, msg_id, reactions]() {
                         for (const auto& emoji : reactions) {
                             try {
-                                rest_.add_reaction(channel_id, msg_id, emoji);
+                                auto res = rest_.add_reaction(channel_id, msg_id, emoji);
+                                if (!res.success()) {
+                                    utils::logger::log(LogLevel::ERROR,
+                                        "Failed to add reaction " + emoji + " to message " + msg_id + ": " + res.error_message() + " (status " + std::to_string(res.status_code) + ")", config_);
+                                }
                                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                            } catch (...) {}
+                            } catch (const std::exception& e) {
+                                utils::logger::log(LogLevel::ERROR,
+                                    "Exception adding reaction " + emoji + " to message " + msg_id + ": " + std::string(e.what()), config_);
+                            } catch (...) {
+                                utils::logger::log(LogLevel::ERROR,
+                                    "Unknown exception adding reaction " + emoji + " to message " + msg_id, config_);
+                            }
                         }
                     }).detach();
                 }
@@ -247,15 +257,29 @@ void cluster::edit_message(const std::string& channel_id,
                 if (payload.interactions) {
                     std::thread([this, channel_id, message_id, payload]() {
                         try {
-                            rest_.clear_reactions(channel_id, message_id);
+                            auto clear_res = rest_.clear_reactions(channel_id, message_id);
+                            if (!clear_res.success()) {
+                                utils::logger::log(LogLevel::ERROR,
+                                    "Failed to clear reactions from message " + message_id + ": " + clear_res.error_message(), config_);
+                            }
                             std::this_thread::sleep_for(std::chrono::milliseconds(100));
                             if (!payload.interactions->reactions.empty()) {
                                 for (const auto& emoji : payload.interactions->reactions) {
-                                    rest_.add_reaction(channel_id, message_id, emoji);
+                                    auto res = rest_.add_reaction(channel_id, message_id, emoji);
+                                    if (!res.success()) {
+                                        utils::logger::log(LogLevel::ERROR,
+                                            "Failed to add reaction " + emoji + " to edited message " + message_id + ": " + res.error_message() + " (status " + std::to_string(res.status_code) + ")", config_);
+                                    }
                                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
                                 }
                             }
-                        } catch (...) {}
+                        } catch (const std::exception& e) {
+                            utils::logger::log(LogLevel::ERROR,
+                                "Exception in edited reactions for message " + message_id + ": " + std::string(e.what()), config_);
+                        } catch (...) {
+                            utils::logger::log(LogLevel::ERROR,
+                                "Unknown exception in edited reactions for message " + message_id, config_);
+                        }
                     }).detach();
                 }
             } else {
