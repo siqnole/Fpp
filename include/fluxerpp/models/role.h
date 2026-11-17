@@ -12,7 +12,7 @@ struct Role {
     std::string name;
     std::optional<std::string> colour;             // hex string
     int color = 0;                                 // raw color integer
-    int rank = 0;                                  // Revolt style rank (mapped from position: rank = 1000 - position)
+    int rank = 0;                                  // role rank (1000 - position; higher = more authority)
     int position = 0;
     nlohmann::json permissions;                    // allow/deny object or bitfield
     nlohmann::json raw;                            // original parsed object

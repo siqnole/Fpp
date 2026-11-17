@@ -3,7 +3,7 @@
 
 namespace fluxerpp::permissions {
 
-// Discord permission flags mapped to Stoat/Revolt equivalents for compatibility
+// Fluxer permission flags (Discord-compatible bitfield values)
 constexpr int64_t CreateInstantInvite = 1ULL << 0;
 constexpr int64_t KickMembers          = 1ULL << 1;
 constexpr int64_t BanMembers           = 1ULL << 2;
@@ -48,7 +48,7 @@ constexpr int64_t SendMessagesInThreads = 1ULL << 38;
 constexpr int64_t UseEmbeddedActivities = 1ULL << 39;
 constexpr int64_t TimeoutMembers       = 1ULL << 40; // Moderate Members
 
-// Compatibility alias for Revolt's Masquerade permission
+// Masquerade permission (mapped to ManageWebhooks since webhooks are used for masquerades on Fluxer)
 constexpr int64_t Masquerade           = 1ULL << 29; // Map to ManageWebhooks since webhooks are used for masquerades on Discord/Fluxer
 constexpr int64_t CreateInvites        = CreateInstantInvite;
 constexpr int64_t AssignRoles          = ManageRole;

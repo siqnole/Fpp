@@ -755,24 +755,41 @@ bool cluster::has_permission(const models::Server& server,
                              int64_t permission_mask) const {
     if (server.owner == member.id) return true;
     int64_t allowed = 0;
-    
-    // Default @everyone permissions
+
+    // Default @everyone / base role permissions.
+    // Discord uses role ID == server ID for @everyone; Fluxer/Guilded uses the
+    // lowest-positioned role (highest rank value) as the default role.
+    bool found_default = false;
+    int highest_rank = -1;
     for (const auto& r : server.roles) {
         if (r.id == server.id) {
             allowed |= r.allowed_permissions();
+            found_default = true;
+            break;
+        }
+        if (r.rank > highest_rank) {
+            highest_rank = r.rank;
         }
     }
-    
-    // Mapped role permissions
+    if (!found_default && highest_rank >= 0) {
+        for (const auto& r : server.roles) {
+            if (r.rank == highest_rank) {
+                allowed |= r.allowed_permissions();
+                break;
+            }
+        }
+    }
+
+    // Member role permissions
     for (const auto& role_id : member.roles) {
         for (const auto& r : server.roles) {
             if (r.id == role_id) allowed |= r.allowed_permissions();
         }
     }
-    
+
     // Administrator permission override
-    if (allowed & (1ULL << 3)) return true;
-    
+    if (allowed & fluxerpp::permissions::Administrator) return true;
+
     return (allowed & permission_mask) == permission_mask;
 }
 
